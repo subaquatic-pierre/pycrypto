@@ -1,0 +1,165 @@
+from unittest import TestCase
+from io import BytesIO
+from src.transaction import Transaction, Input, Output, TxFetcher, RemoteApiCaller
+import pprint
+
+
+def print(*args, **kwargs):
+    return pprint.pprint(*args, **kwargs)
+
+
+remote_block_hash = "000000000000001e85fe2aba7bd734eb5d4bcdaa12f42745c2fd5396519546be"
+remote_tx_hash = "0f751bef01ef23a5591154c6fa06a377aec95f89e497ddb71e03e9baef0f2d78"
+
+raw_hex = "0100000001813f79011acb80925dfe69b3def355fe914bd1d96a3f5f71bf8303c6a989c7d1000000006b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278afeffffff02a135ef01000000001976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac99c39800000000001976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac19430600"
+
+raw_hex_2 = "0200000000010567c888456b61170d52a77f74974c92a6075aba4a151b892f119c9916ba9f33c80100000000feffffff48153e6dc07cc74f4bffcadb422c782ff73f9d9e55291c4ae7e5f720889af87a0000000000feffffff8d1c2a870b54bf561853a16e6531c4b71e2b9f47d9733ab02db06ad62b5f23eb0000000000feffffff9d45e542db7debc57e05861dfe1a166f78c6c8530d81aaaf3dbca66764d4f0a50000000000feffffff87cd1224509703c8bbdd0a533b6bde75253d820b32d7ca3d27707100c47f9c470100000000feffffff02bc3610000000000016001461940c8869fb34571086a8988c1a972daed1af83c82c0100000000001600145d576a81f460e7a1ed254fe9bfff075ab3bc45650247304402207fcd9d1e7e4faea1a617e07247365da6578cbb2ef620b230c0342569aaa26b330220133e24aa39bd73803a2255b211c33f08540dae76e04b3cec2a2672602b3fc509012102549fa9f712caffdf63da7d077e6a26dc3d01ca275312e9f64d1d9accf949d2bc02473044022065e723455564308b50ea91d0d6fe0593fbc5f755f97c42ecedb7981b8a50709802200c7b814941d576abfc71d674f6e53b3fa58006d9dcbfeaf49c510a7d55e912ee012102549fa9f712caffdf63da7d077e6a26dc3d01ca275312e9f64d1d9accf949d2bc0247304402205f6ad17b42bf6ca4f8a3dd08160d8290f422c8f1b40f2983af612c1a2cad344e0220301439ee0df745b4ad1d752ca58dac561ab1248fb7805d66d0f736e6ef663e67012102549fa9f712caffdf63da7d077e6a26dc3d01ca275312e9f64d1d9accf949d2bc02473044022021ec3be2240ba288981cd3eba70d4ef1dd0d93071d20b067924427b58875be0d022034726ac77af04b07dda662d10c27b6478e704741dc5d09718573d76c64c6ef95012102549fa9f712caffdf63da7d077e6a26dc3d01ca275312e9f64d1d9accf949d2bc02473044022053ef8fa434c9c5ced7cf4c230ce07d3b1c4c0fbf6f61810c9c903eccdf8358e902200d9f6126ed6d4b2073ede8d8623007da7862bd1afc069043938cb422e2a34b68012102549fa9f712caffdf63da7d077e6a26dc3d01ca275312e9f64d1d9accf949d2bc791b2500"
+
+raw_tx = bytes.fromhex(raw_hex)
+
+
+# class TestTx(TestCase):
+#     def test_parse_version(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+
+#         # print(tx)
+#         self.assertEqual(tx.version, 1)
+
+#     def test_parse_inputs(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+#         self.assertEqual(len(tx.tx_ins), 1)
+#         want = bytes.fromhex(
+#             "d1c789a9c60383bf715f3f6ad9d14b91fe55f3deb369fe5d9280cb1a01793f81"
+#         )
+#         self.assertEqual(tx.tx_ins[0].prev_tx, want)
+#         self.assertEqual(tx.tx_ins[0].prev_index, 0)
+#         want = bytes.fromhex(
+#             "6b483045022100ed81ff192e75a3fd2304004dcadb746fa5e24c5031ccfcf21320b0277457c98f02207a986d955c6e0cb35d446a89d3f56100f4d7f67801c31967743a9c8e10615bed01210349fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a"
+#         )
+#         # self.assertEqual(tx.tx_ins[0].script_sig.serialize(), want)
+#         self.assertEqual(tx.tx_ins[0].sequence, 0xFFFFFFFE)
+
+#     def test_parse_outputs(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+#         self.assertEqual(len(tx.tx_outs), 2)
+#         want = 32454049
+#         self.assertEqual(tx.tx_outs[0].amount, want)
+#         # want = bytes.fromhex("1976a914bc3b654dca7e56b04dca18f2566cdaf02e8d9ada88ac")
+#         # self.assertEqual(tx.tx_outs[0].script_pubkey.serialize(), want)
+#         # want = 10011545
+#         # self.assertEqual(tx.tx_outs[1].amount, want)
+#         # want = bytes.fromhex("1976a9141c4bc762dd5423e332166702cb75f40df79fea1288ac")
+#         # self.assertEqual(tx.tx_outs[1].script_pubkey.serialize(), want)
+
+#     def test_parse_locktime(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+#         self.assertEqual(tx.locktime, 410393)
+
+#     def test_serialize(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+
+#         self.assertEqual(tx.serialize().hex(), raw_tx.hex())
+
+#     def test_id(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+
+#         wants = "3f7221e272a0782007a90b0cc4a0f091c34333d2fba0bc2205937214e1e9d17e"
+#         self.assertEqual(tx.id(), wants)
+
+#     def test_raw_hex_2(self):
+#         tx_bytes = bytes.fromhex(raw_hex_2)
+#         stream = BytesIO(tx_bytes)
+#         tx = Transaction.parse(stream)
+#         # print(tx)
+
+
+# class TestTxFetcher(TestCase):
+#     def test_fetch_tx(self):
+#         stream = BytesIO(raw_tx)
+#         tx = Transaction.parse(stream)
+
+#         fetch_tx = TxFetcher.fetch(tx.id(), True, True)
+#         print(fetch_tx)
+
+
+class TestRemoteAPICaller(TestCase):
+    def setUp(self) -> None:
+        self.caller = RemoteApiCaller()
+        return super().setUp()
+
+    def test_list_blocks(self):
+        res = self.caller.list_blocks()
+
+        # print(res)
+
+        pass
+
+        # self.assertGreater(len(res["data"]["items"]), 0)
+
+    def test_block_details(self):
+        block = self.caller.block(
+            "0000000000000003d7e4ccc99bf6f2409597e928f2715b5aef53aede360e6604"
+        )
+
+        # print(last_block)
+
+        pass
+
+    def test_list_block_txs(self):
+        block_txs = self.caller.list_block_txs(
+            "0000000000000003d7e4ccc99bf6f2409597e928f2715b5aef53aede360e6604"
+        )
+
+        # print(block_txs)
+
+        pass
+        # res = self.caller.last_block()
+        # print(res["data"]["item"]["hash"])
+
+    def test_tx_details(self):
+        tx = self.caller.tx(
+            "2fe0ed0c67728c1b5b78c8874622fb0e89d117281a98c74df483f6ef3ea0c7ff"
+        )
+
+        vins = tx.get("vin")
+        vouts = tx.get("vout")
+
+        total_in_value = [prevout.get("prevout").get("value") for prevout in vins]
+        total_out_value = [vout.get("value") for vout in vouts]
+
+        # print(tx)
+
+        # print(
+        #     {
+        #         "total_in_value": sum(total_in_value),
+        #         "total_out_value": sum(total_out_value),
+        #         "difference": sum(total_in_value) - sum(total_out_value),
+        #     }
+        # )
+
+        pass
+
+    def test_tx_raw(self):
+        last_tx_hex = "0200000000010175ec34db1d7c9ffe6e11724800604eb6b62ef97b18447c7b432816ef10760a470000000000feffffff02c82c0100000000001600145d576a81f460e7a1ed254fe9bfff075ab3bc4565b0131e00000000001600149eed48d7a00016267cf945d1323e93378c352ebe02473044022039ff1e5b9c8b73fb1429f2933dc989461035a580d88fa7a2830e899945e2953902207338dad1324a9330e937a815909d85478d0c1c4db8cb660f2392c119f7ea38c0012102f64b44374dd139c4e3fbf04575d841970c2f867899de5660c130e2259e28273bca1b2500"
+
+        tx_bytes = bytes.fromhex(last_tx_hex)
+        stream = BytesIO(tx_bytes)
+        tx = Transaction.parse_bytes(stream)
+
+        print(tx)
+
+        # print({"tx_hex": tx})
+
+    def test_list_tx(self):
+        pass
+        # res = self.caller.last_block()
+        # last_block_hash = res["data"]["item"]["hash"]
+        # tx_list_res = self.caller.list_block_tx(last_block_hash)
+        # print(tx_list_res)
+        # self.assertGreater(len(res["data"]["items"]), 0)
