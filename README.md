@@ -32,9 +32,19 @@ python3 -m unittest
 
 ```
 
+## Roadmap
+
+This project is in development phase. It does not have any clear API yet.
+
+### Todo
+
+- Implement API
+
 ## Contribution
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
 License
+
+## License
 
 This project is licensed under the MIT License.
